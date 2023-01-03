@@ -5,9 +5,26 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* disable scrollbars and scrolling for the app */
+  overflow: hidden;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+html, body, #root {
+  margin: 0px;
+  padding: 0px;
+  
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  /* background: linear-gradient(to right, rgb(0, 183, 255) 0%, rgb(0, 53, 167) 100%);
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 500; */
 }

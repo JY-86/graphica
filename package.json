@@ -9,9 +9,13 @@
     "concurrently": "^7.6.0",
     "cross-env": "^7.0.3",
     "electronmon": "^2.0.2",
+    "konva": "^8.3.14",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-konva": "^18.2.3",
+    "react-mathquill": "^1.0.2",
     "react-scripts": "5.0.1",
+    "tachyons": "^4.12.0",
     "wait-on": "^7.0.1",
     "web-vitals": "^2.1.4"
   },
@@ -50,19 +54,22 @@
   "homepage": "./",
   "build": {
     "appId": "com.electron.graphica",
-     "productName": "Graphica",
-     "files": ["build/**/*", "node_modules/**/*"],
-     "directories": {
-       "buildResources": "public"
-     },
-     "mac": {
-       "target": "dmg"
-     },
-     "win": {
-       "target": "nsis"
-     },
-     "linux": {
-       "target": "deb"
-     }
+    "productName": "Graphica",
+    "files": [
+      "build/**/*",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "buildResources": "public"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "deb"
+    }
   }
 }
