@@ -2,7 +2,7 @@ import React from 'react';
 import 'tachyons';
 import { Stage, Layer, Rect, Circle, Line, Text } from 'react-konva';
 import Konva from 'konva'
-import {clamp, Vector, getLinePoints, testFunctionEvaluator} from '../../algorithms/utilities'
+import {clamp, Vector, getLinePoints, testFunctionEvaluator, strip} from '../../algorithms/utilities'
 import 'big-js';
 
 class MathGrid extends React.Component {
@@ -18,7 +18,6 @@ class MathGrid extends React.Component {
     }
     this.containerDiv = React.createRef();
     this.mousePos = [0,0];
-
   }
   
   componentDidMount = () => {
@@ -33,9 +32,8 @@ class MathGrid extends React.Component {
   }
 
   calculateSize = () => {
-    const width = this.containerDiv.current.clientWidth;
-    const height = this.containerDiv.current.clientHeight;
-    this.setState({width:width, height:height});
+    this.setState({width:this.containerDiv.current.clientWidth, 
+      height:this.containerDiv.current.clientHeight});
   }
 
   pixelsToUnits = (px, gridSpacing, gridJump) => {
@@ -268,7 +266,7 @@ class MathGrid extends React.Component {
 
       return (
         <div>
-          {(item.lineNum % 5 == 0 && item.lineNum !== 0) && <Text verticalAlign={"middle"} align={"center"} x={item.pos-30} y={xNumbersYPos-10} width={60} height={20} text={item.value.toString()} 
+          {(item.lineNum % 5 == 0 && item.lineNum !== 0) && <Text verticalAlign={"middle"} align={"center"} x={item.pos-30} y={xNumbersYPos-10} width={60} height={20} text={strip(item.value.toString())} 
           fontSize={10} fontFamily={'Calibri'} fill={'black'}/>} 
           <Line points={[item.pos,0,item.pos,height]} stroke={"black"} strokeWidth={strokeWidth} key={item.pos}/>
         </div>      
@@ -292,12 +290,12 @@ class MathGrid extends React.Component {
           <Layer >
             {xGridLines}
             {yGridLines}
-            {/* <Line points={getLinePoints(width,height,
+            <Line points={getLinePoints(width,height,
               gridInfo.unitScreenBounds.left,
               gridInfo.unitScreenBounds.right,
               gridInfo.unitScreenBounds.bottom,
               gridInfo.unitScreenBounds.top, 
-              testFunctionEvaluator)} strokeWidth={1} stroke={"red"}/> */}
+              testFunctionEvaluator)} strokeWidth={1} stroke={"red"}/>
             {/* <Line points={[0,height/2,width,height/2]} stroke={"black"} strokeWidth={2}/>
             <Line points={[width/2,0,width/2,height]} stroke={"black"} strokeWidth={2}/> */}
           </Layer>
@@ -315,13 +313,13 @@ export default MathGrid;
 // TO DO:
 // clean up formatting of X unit labels
 // add in y text, add in thicker y lines every 5 etc. --> last
-// make grid labels not say .00001
+// change grid colors to more grey, and make it look pretty
 // fix problems with the line drawing function in utilities
 // improve performance!! You can optimise a lot of things, like gridJump
-// improve commenting and magic numbers, especially for gridJump
+// improve commenting and magic numbers and variable names, especially for gridJump. Remove spaghetti code.
 
 
-
+// make grid labels not say .00001 --> DONE
 // make scaling on mouse work at small distances --> DONE
 
 // make grid scaling not by 2 each time --> done
