@@ -1,6 +1,6 @@
 import React from 'react';
 import 'tachyons';
-import { Stage, Layer, Rect, Circle, Line, Text } from 'react-konva';
+import { Stage, Layer, Rect, Circle, Line, Text, Group } from 'react-konva';
 import Konva from 'konva'
 import {clamp, Vector, getLinePoints, testFunctionEvaluator, strip} from '../../algorithms/utilities'
 import 'big-js';
@@ -18,6 +18,8 @@ class MathGrid extends React.Component {
     }
     this.containerDiv = React.createRef();
     this.mousePos = [0,0];
+
+    this.labelFontSize = 12;
   }
   
   componentDidMount = () => {
@@ -60,30 +62,47 @@ class MathGrid extends React.Component {
 
   getGridJumpAndSpacing(scale) {
     const MIN_GRID_SPACING = 14; //px
-    const MAX_GRID_SPACING = MIN_GRID_SPACING*2.5; //40; //px // was 2
+    const MAX_GRID_SPACING = MIN_GRID_SPACING*2.5; //px
     const IDEAL_GRID_SPACING = (MIN_GRID_SPACING + MAX_GRID_SPACING) / 2; //px
 
     // these are all like magic numbers, make it more clearly documented
 
-    let gridSpacing = IDEAL_GRID_SPACING * 1/scale;
+    // let gridSpacing = IDEAL_GRID_SPACING / scale;
 
-    let gridJump = 1; // the unit spacing between 2 grid lines
-    let jumpCount = 0; // on the -8, -5, -2 qnd 2, 5, 8... jumps, its a 2.5x jump
-    let getJumpAmount = (jumpCount) => (Math.abs(jumpCount) - 2) % 3 == 0 ? 2.5 : 2
+    // let gridJump = 1; // the unit spacing between 2 grid lines
+    // let jumpCount = 0; // on the -8, -5, -2 qnd 2, 5, 8... jumps, its a 2.5x jump
+    // let getJumpAmount = (jumpCount) => (Math.abs(jumpCount) - 2) % 3 == 0 ? 2.5 : 2
 
-    // calculate variables relevant to scaling both x and y of grid. can optimise to no loop and just a math equation later
-    while (gridSpacing > MAX_GRID_SPACING) {
-      jumpCount--;
-      let jumpAmount = getJumpAmount(jumpCount)
-      gridSpacing /= jumpAmount;
-      gridJump /= jumpAmount
+    // // calculate variables relevant to scaling both x and y of grid. can optimise to no loop and just a math equation later
+    // while (gridSpacing > MAX_GRID_SPACING) {
+    //   jumpCount--;
+    //   let jumpAmount = getJumpAmount(jumpCount)
+    //   gridSpacing /= jumpAmount;
+    //   gridJump /= jumpAmount
+    // }
+    // while (gridSpacing < MIN_GRID_SPACING) {
+    //   jumpCount++;
+    //   let jumpAmount = getJumpAmount(jumpCount)
+    //   gridSpacing *= jumpAmount;
+    //   gridJump *= jumpAmount
+    // }
+    // return {gridJump: gridJump, gridSpacing: gridSpacing}
+
+    
+    // version 2 - keep version 1 for how it actually works and if any errors crop up, but this is way faster
+    // this is for when gridSpacing is bigger than max spacing
+    let unclampedGridSpacing = IDEAL_GRID_SPACING / scale;
+    let clamp10 = Math.pow(10, Math.ceil(Math.log10(unclampedGridSpacing/MAX_GRID_SPACING)))
+    let gridSpacing = unclampedGridSpacing / clamp10
+
+    if (gridSpacing < MIN_GRID_SPACING / 2) {
+      gridSpacing *= 5
     }
-    while (gridSpacing < MIN_GRID_SPACING) {
-      jumpCount++;
-      let jumpAmount = getJumpAmount(jumpCount)
-      gridSpacing *= jumpAmount;
-      gridJump *= jumpAmount
+    else if (gridSpacing <= MIN_GRID_SPACING) {
+      gridSpacing *= 2
     }
+    let gridJump = gridSpacing / unclampedGridSpacing
+
     return {gridJump: gridJump, gridSpacing: gridSpacing}
   }
 
@@ -144,77 +163,40 @@ class MathGrid extends React.Component {
   }
 
   handleWheel = (e) => {
-    const SPEED_MULTIPLIER = 0.01;
-
-    // as scale gets very small, speed gets smaller as well. as scale very large, speed very large.
-    // could set speed = 0
-    // will also need to make it scale on mousewheel somehow.
-
-    // calculate how far centre will need to be moved to look like grid zooming in on mouse
-
-
+    const SPEED_MULTIPLIER = 0.001;
     let nativeEvent = e.evt
+
+    console.log(nativeEvent.deltaY)
     this.setState((prevState) => {
-      let speed = SPEED_MULTIPLIER * prevState.gridSettings.scale
-      let newScale = Math.max(0.001, prevState.gridSettings.scale + nativeEvent.deltaY * speed);
+      //let speed = SPEED_MULTIPLIER * prevState.gridSettings.scale
+      let newScale = Math.max(0.0001, prevState.gridSettings.scale * (1 + nativeEvent.deltaY * SPEED_MULTIPLIER));
 
       
       // convert centre to units
       let pxSettingsOld = this.getGridJumpAndSpacing(prevState.gridSettings.scale)
       let pxSettingsNew = this.getGridJumpAndSpacing(newScale)
-      //let unitCenter = prevState.gridSettings.center.map((x) => this.pixelsToUnits(x, pxSettingsOld.gridSpacing, pxSettingsOld.gridJump))
-      //let newCenter = unitCenter.map((x) => this.unitsToPixels(x, pxSettingsNew.gridSpacing, pxSettingsNew.gridJump))
-      // now have to fix this by using not the grid centre, but the mouse.
-      let mouseX = prevState.gridSettings.center[0] - prevState.width/2 + this.mousePos[0] ;
+
+      let mouseX = prevState.gridSettings.center[0] - prevState.width/2 + this.mousePos[0];
       let mouseY = prevState.gridSettings.center[1] - prevState.height/2 + this.mousePos[1];
       let unitMouseCoord = [mouseX, mouseY].map((x) => this.pixelsToUnits(x, pxSettingsOld.gridSpacing, pxSettingsOld.gridJump))
       let newPxMouseCoords = unitMouseCoord.map((x) => this.unitsToPixels(x, pxSettingsNew.gridSpacing, pxSettingsNew.gridJump))
-      // apply reveerse offset to find new centre
+
       let newCenter = [
         newPxMouseCoords[0] + prevState.width/2 - this.mousePos[0],
         newPxMouseCoords[1] + prevState.height/2 - this.mousePos[1]
       ]
 
-      // // get mouse pos from centre
-      // let mouseX = prevState.gridSettings.center[0] - prevState.width/2 + this.mousePos[0] ;
-      // let mouseY = prevState.gridSettings.center[1] - prevState.height/2 + this.mousePos[1];
-      // let mouseToCentreVec = new Vector(mouseX, mouseY);
-      
-
-      // // center[0] + (center[0] - prevState.width/2 + this.mousePos[0]) * nativeEvent.deltaY * speedMultiplier
-
-      // console.log(prevState.gridSettings.center, mouseToCentreVec)
-      // // scale to offset size
-      // // (prevScale + nativeEvent.deltaY * SPEED_MULTIPLIER * prevScale) / prevScale - 1
-      // // 
-      // //let s = (new Big(newScale)).div(new Big(prevState.gridSettings.scale)).minus(new Big(1))
-      // //mouseToCentreVec.scale(s)//newScale / prevState.gridSettings.scale - 1)
-      
-      // if (newScale !== 0.001){
-      //   mouseToCentreVec.scale(nativeEvent.deltaY * SPEED_MULTIPLIER); // this is simplified version of newScale/oldscale -1
-      // }
-      // else {
-      //   mouseToCentreVec.scale(0);
-      // }
-      // mouseToCentreVec.flip()
-
-      // //let screenCentreVec = new Vector(prevState.width/2, prevState.height/2);
-     // let newCentre = [prevState.gridSettings.center[0] + mouseToCentreVec.x, prevState.gridSettings.center[1] + mouseToCentreVec.y]
-      // console.log(mouseToCentreVec)
       return {gridSettings: {
         ...prevState.gridSettings,
         scale: newScale,
         center: newCenter
       }}
     })
-   // console.log("scale", (this.state.gridSettings.scale).toFixed(2), "deltaY", nativeEvent.deltaY.toFixed(2))
   }
 
   handleMouseMove = (e) => {
     const SPEED = 1;
-
     let nativeEvent = e.evt
-
     let isMouseDown = nativeEvent.which //.which is 1 when left mouse button pressed, 0 otherwise
 
     if (isMouseDown) {
@@ -227,17 +209,114 @@ class MathGrid extends React.Component {
     }
     
     // allow other methods to access mouse position within canvas
-    
-    
     let rect = nativeEvent.target.getBoundingClientRect()
     this.mousePos = [nativeEvent.clientX - rect.left, nativeEvent.clientY - rect.top]
-
-    // console.log(nativeEvent.x - rect.left, nativeEvent.screenX)
-
-    // console.log("scale", (this.state.gridSettings.scale).toFixed(2), "deltaY", nativeEvent.deltaY.toFixed(2))
-    
   }
 
+  getGridLineJSX(lineInfo, axis, width, height, numberPos) {
+    let isMajor = lineInfo.lineNum % 5 == 0 && lineInfo.lineNum !== 0
+    // points
+    let points;
+    if (axis === "x") points = [lineInfo.pos,0,lineInfo.pos,height];
+    if (axis === "y") points = [0,lineInfo.pos,width,lineInfo.pos]; //add width and height vars to func
+
+    // thickness
+    let strokeWidth = 0.1;
+    if (isMajor) strokeWidth = 0.6;
+    if (lineInfo.lineNum == 0) strokeWidth = 2;
+
+    // unique identifier
+    let key = lineInfo.pos+axis.charCodeAt(0)
+    
+  
+    // color
+    let color = "#969696"
+    if (isMajor) color = "#6e6e6e";
+    if (lineInfo.lineNum == 0) color = "#404040";
+    
+    // attached text label
+    // let text = false; // false in JSX results in react just skipping it
+    // if (isMajor) {
+    //   let pos = [lineInfo.pos, numberPos];
+    //   if (axis == "y") pos.reverse();
+
+    //   text = <Text 
+    //     verticalAlign={"middle"} 
+    //     align={"center"} 
+    //     x={pos[0]-30} 
+    //     y={pos[1]-10}
+    //     width={60} 
+    //     height={20} 
+    //     text={strip(lineInfo.value.toString())} 
+    //     fontSize={10} 
+    //     fontFamily={'Calibri'} 
+    //     fill={'black'} 
+    //     fillAfterStrokeEnabled={true} //allows for outline of 1/2 stroke width
+    //     stroke={'white'}
+    //     strokeWidth={3}
+    //     key={key+1} //+1 to make it unique
+    //     zIndex={2}
+    //   />
+    // }
+
+
+    // add in rendering of '0' only if both axes visible.
+
+    // see react conditional rendering docs for explanation of the Text && bit.
+    return (
+      <Group>
+        <Line points={points} stroke={color} strokeWidth={strokeWidth} key={key}/>
+        {/* {text} */}
+      </Group>      
+    )
+  }
+
+  getLineLabelJSX(lineInfo, axis, alternateAxisPos, axisOffscreen) {
+    const WIDTH = 100;
+    const HEIGHT = 100;
+
+    let isMajor = lineInfo.lineNum % 5 == 0 && lineInfo.lineNum !== 0
+
+    let text = false; // false in JSX results in react just skipping it
+    if (isMajor) {
+      let pos = [lineInfo.pos, alternateAxisPos];
+      if (axis == "y") pos.reverse();
+
+      let alignment;
+      if (axis == "x") alignment = {
+        verticalAlign: "top",
+        align: "center",
+        xOffset: -WIDTH/2,
+        yOffset: this.labelFontSize / 2
+      };
+      else alignment = {
+        verticalAlign: "middle",
+        align: "right",
+        xOffset: -WIDTH - this.labelFontSize / 2,
+        yOffset: -HEIGHT/2
+      };
+
+      text = <Text 
+        verticalAlign={alignment.verticalAlign} 
+        align={alignment.align} 
+        x={pos[0]+alignment.xOffset} 
+        y={pos[1]+alignment.yOffset}
+        width={WIDTH} 
+        height={HEIGHT} 
+        
+        text={strip(lineInfo.value.toString())} 
+        fontSize={this.labelFontSize} 
+        fontFamily={'Calibri'} 
+        fill={axisOffscreen ? '	#696969':'black'} 
+        fillAfterStrokeEnabled={true} //allows for outline of 1/2 stroke width
+        stroke={'white'}
+        strokeWidth={2}
+      />
+    }
+
+    return text
+  }
+  
   render () {
     let {width, height, gridSettings} = this.state
     let posInfo = this.calculatePosInfo(width, height)
@@ -246,38 +325,18 @@ class MathGrid extends React.Component {
     let yAxis = gridInfo.xLines.filter((line) => line.lineNum === 0)[0] // if main X line is not on the screen, this is undefined
     let xAxis = gridInfo.yLines.filter((line) => line.lineNum === 0)[0] // as above
     
-
-    // these numbers are overkill
-    let xNumbersYPos = xAxis !== undefined ? xAxis.pos : (gridSettings.center[1] > 0 ? -height - 2: height + 2); // the 2nd tertiary operator checks if x axis is below or above screen. If it is below, x nums should stick to bottom of screen. Otherwise, to top.
-    xNumbersYPos = clamp(xNumbersYPos, 10, height-20)
-
-    // make a list of x gridlines
-    //let xGridLines = [];
-    let xGridLines = gridInfo.xLines.map((item) => {
-     // console.log(item.value)
-      // see react conditional rendering docs for explanation of the Text && bit.
-      let strokeWidth = 0.1;
-      if (item.lineNum % 5 == 0) {
-        strokeWidth = 0.6;
-      }
-      if (item.lineNum == 0) {
-        strokeWidth = 2;
-      }
-
-      return (
-        <div>
-          {(item.lineNum % 5 == 0 && item.lineNum !== 0) && <Text verticalAlign={"middle"} align={"center"} x={item.pos-30} y={xNumbersYPos-10} width={60} height={20} text={strip(item.value.toString())} 
-          fontSize={10} fontFamily={'Calibri'} fill={'black'}/>} 
-          <Line points={[item.pos,0,item.pos,height]} stroke={"black"} strokeWidth={strokeWidth} key={item.pos}/>
-        </div>      
-      )
-    })
-    let yGridLines = gridInfo.yLines.map((item) => {
-      return <Line points={[0,item.pos,width,item.pos]} stroke={"black"} strokeWidth={item.lineNum === 0 ? 2 : 0.1} key={item.pos}/>
-    }) // implement y grid lines with all the extras of x grid lines (like thicker lines at some points, numbers) later
-
+    const OFFSET = 2;
+    let xNumbersYPos = xAxis !== undefined ? clamp(xAxis.pos, OFFSET, height-this.labelFontSize*1.5-OFFSET) : (gridSettings.center[1] > 0 ? OFFSET: height-this.labelFontSize*1.5-OFFSET); // the 2nd tertiary operator checks if x axis is below or above screen. If it is below, x nums should stick to bottom of screen. Otherwise, to top. Fix magic numbers
+    let yNumbersXPos = yAxis !== undefined ? clamp(yAxis.pos, 20, width-OFFSET) : (gridSettings.center[0] > 0 ? 20: width-OFFSET); // the 2nd tertiary operator checks if x axis is below or above screen. If it is below, x nums should stick to bottom of screen. Otherwise, to top. Fix magic numbers
     
+    // make a lists gridlines
+    let xGridLines = gridInfo.xLines.map((item) => this.getGridLineJSX(item, "x", width, height, xNumbersYPos))
+    let yGridLines = gridInfo.yLines.map((item) => this.getGridLineJSX(item, "y", width, height, yNumbersXPos))
+    let xLabels = gridInfo.xLines.map((item) => this.getLineLabelJSX(item, "x", xNumbersYPos, xAxis == undefined))
+    let yLabels = gridInfo.yLines.map((item) => this.getLineLabelJSX({...item, value: -item.value}, "y", yNumbersXPos, yAxis == undefined)) // values of y lines are in reverse of what they should be, so we reverse them again here.
 
+
+    // the only problem with labels now is the offsets when axes are not on screen. Then numbers can be cut off screen
     return (
       <div ref={this.containerDiv} className='w-100 h-100' style={{position:'relative'}}>
         <Stage 
@@ -290,19 +349,19 @@ class MathGrid extends React.Component {
           <Layer >
             {xGridLines}
             {yGridLines}
-            <Line points={getLinePoints(width,height,
+            {xLabels}
+            {yLabels}
+            {/* <Line points={getLinePoints(width,height,
               gridInfo.unitScreenBounds.left,
               gridInfo.unitScreenBounds.right,
               gridInfo.unitScreenBounds.bottom,
               gridInfo.unitScreenBounds.top, 
-              testFunctionEvaluator)} strokeWidth={1} stroke={"red"}/>
-            {/* <Line points={[0,height/2,width,height/2]} stroke={"black"} strokeWidth={2}/>
-            <Line points={[width/2,0,width/2,height]} stroke={"black"} strokeWidth={2}/> */}
+              testFunctionEvaluator)} strokeWidth={1} stroke={"red"}/> */}
           </Layer>
         </Stage>
       </div>
-//https://stackoverflow.com/questions/65433710/how-to-set-stage-width-and-height-to-100-react-konva
     )
+    //https://stackoverflow.com/questions/65433710/how-to-set-stage-width-and-height-to-100-react-konva
   }
 }
 
@@ -317,7 +376,8 @@ export default MathGrid;
 // fix problems with the line drawing function in utilities
 // improve performance!! You can optimise a lot of things, like gridJump
 // improve commenting and magic numbers and variable names, especially for gridJump. Remove spaghetti code.
-
+// fix scrolling with mouse, which is jumpy and zooms in fully on up zoom
+// make scale speed not linear, check desmos for ideas (faster as you zoom out, slower as you zoom in)
 
 // make grid labels not say .00001 --> DONE
 // make scaling on mouse work at small distances --> DONE
@@ -346,3 +406,36 @@ export default MathGrid;
 
 // you have to use performance analysers to find what takes the most time - i think its something easily fixable, not
 // the functionevaluator or anything crucial
+
+
+
+
+
+
+///OLD SCALING CODE
+// get mouse pos from centre
+// let mouseX = prevState.gridSettings.center[0] - prevState.width/2 + this.mousePos[0] ;
+// let mouseY = prevState.gridSettings.center[1] - prevState.height/2 + this.mousePos[1];
+// let mouseToCentreVec = new Vector(mouseX, mouseY);
+
+
+// // center[0] + (center[0] - prevState.width/2 + this.mousePos[0]) * nativeEvent.deltaY * speedMultiplier
+
+// console.log(prevState.gridSettings.center, mouseToCentreVec)
+// // scale to offset size
+// // (prevScale + nativeEvent.deltaY * SPEED_MULTIPLIER * prevScale) / prevScale - 1
+// // 
+// //let s = (new Big(newScale)).div(new Big(prevState.gridSettings.scale)).minus(new Big(1))
+// //mouseToCentreVec.scale(s)//newScale / prevState.gridSettings.scale - 1)
+
+// if (newScale !== 0.001){
+//   mouseToCentreVec.scale(nativeEvent.deltaY * SPEED_MULTIPLIER); // this is simplified version of newScale/oldscale -1
+// }
+// else {
+//   mouseToCentreVec.scale(0);
+// }
+// mouseToCentreVec.flip()
+
+// //let screenCentreVec = new Vector(prevState.width/2, prevState.height/2);
+// let newCentre = [prevState.gridSettings.center[0] + mouseToCentreVec.x, prevState.gridSettings.center[1] + mouseToCentreVec.y]
+// console.log(mouseToCentreVec)

@@ -37,7 +37,6 @@ class MathBar extends React.Component {
 
   setLatex = (latex) => {
     this.setState({latex: latex})
-    console.log(latex)
   }
   
   render () {
