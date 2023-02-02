@@ -1,8 +1,8 @@
 import React from 'react';
 import 'tachyons';
-import { Stage, Layer, Rect, Circle, Line, Text, Group } from 'react-konva';
+import { Stage, Layer, Rect, Circle, Line, Text, Group, Path } from 'react-konva';
 import Konva from 'konva'
-import {clamp, Vector, getLinePoints, testFunctionEvaluator, strip} from '../../algorithms/utilities'
+import {clamp, Vector, getLinePoints, testFunctionEvaluator, strip, pointsToSVG} from '../../algorithms/utilities'
 import 'big-js';
 
 class MathGrid extends React.Component {
@@ -19,7 +19,7 @@ class MathGrid extends React.Component {
     this.containerDiv = React.createRef();
     this.mousePos = [0,0];
 
-    this.labelFontSize = 12;
+    this.labelFontSize = 14;
   }
   
   componentDidMount = () => {
@@ -163,28 +163,35 @@ class MathGrid extends React.Component {
   }
 
   handleWheel = (e) => {
-    const SPEED_MULTIPLIER = 0.001;
+    const SPEED_MULTIPLIER = 0.0005;
     let nativeEvent = e.evt
 
-    console.log(nativeEvent.deltaY)
+   // console.log(nativeEvent.deltaY)
     this.setState((prevState) => {
       //let speed = SPEED_MULTIPLIER * prevState.gridSettings.scale
       let newScale = Math.max(0.0001, prevState.gridSettings.scale * (1 + nativeEvent.deltaY * SPEED_MULTIPLIER));
-
-      
-      // convert centre to units
-      let pxSettingsOld = this.getGridJumpAndSpacing(prevState.gridSettings.scale)
-      let pxSettingsNew = this.getGridJumpAndSpacing(newScale)
+      let newCenter;
 
       let mouseX = prevState.gridSettings.center[0] - prevState.width/2 + this.mousePos[0];
       let mouseY = prevState.gridSettings.center[1] - prevState.height/2 + this.mousePos[1];
-      let unitMouseCoord = [mouseX, mouseY].map((x) => this.pixelsToUnits(x, pxSettingsOld.gridSpacing, pxSettingsOld.gridJump))
-      let newPxMouseCoords = unitMouseCoord.map((x) => this.unitsToPixels(x, pxSettingsNew.gridSpacing, pxSettingsNew.gridJump))
+      let dist = Math.sqrt(Math.pow(mouseX,2) + Math.pow(mouseY,2))
 
-      let newCenter = [
-        newPxMouseCoords[0] + prevState.width/2 - this.mousePos[0],
-        newPxMouseCoords[1] + prevState.height/2 - this.mousePos[1]
-      ]
+      if (dist < 20 && nativeEvent.deltaY<0) { // if mouse is close to (0, 0) and zooming in, just zoom on (0, 0) for convenience because that's what user likely intended.
+        newCenter = prevState.gridSettings.center
+      }
+      else {
+        let pxSettingsOld = this.getGridJumpAndSpacing(prevState.gridSettings.scale)
+        let pxSettingsNew = this.getGridJumpAndSpacing(newScale)
+
+        // convert centre to units
+        let unitMouseCoord = [mouseX, mouseY].map((x) => this.pixelsToUnits(x, pxSettingsOld.gridSpacing, pxSettingsOld.gridJump))
+        let newPxMouseCoords = unitMouseCoord.map((x) => this.unitsToPixels(x, pxSettingsNew.gridSpacing, pxSettingsNew.gridJump))
+
+        newCenter = [
+          newPxMouseCoords[0] + prevState.width/2 - this.mousePos[0],
+          newPxMouseCoords[1] + prevState.height/2 - this.mousePos[1]
+        ]
+      }
 
       return {gridSettings: {
         ...prevState.gridSettings,
@@ -230,7 +237,7 @@ class MathGrid extends React.Component {
     
   
     // color
-    let color = "#969696"
+    let color = "#767676"
     if (isMajor) color = "#6e6e6e";
     if (lineInfo.lineNum == 0) color = "#404040";
     
@@ -264,10 +271,8 @@ class MathGrid extends React.Component {
 
     // see react conditional rendering docs for explanation of the Text && bit.
     return (
-      <Group>
-        <Line points={points} stroke={color} strokeWidth={strokeWidth} key={key}/>
-        {/* {text} */}
-      </Group>      
+        <Line points={points} stroke={color} strokeWidth={strokeWidth} key={key} 
+        perfectDrawEnabled={false} listening={false} shadowForStrokeEnabled={false} strokeHitEnabled={false}/>
     )
   }
 
@@ -296,6 +301,13 @@ class MathGrid extends React.Component {
         yOffset: -HEIGHT/2
       };
 
+      let str;
+      if (false) { //(scale > 500000) {
+        str = strip(lineInfo.value).toExponential()
+        str = str.replace("e+", "x10^")
+      }
+      else str = strip(lineInfo.value.toString());
+
       text = <Text 
         verticalAlign={alignment.verticalAlign} 
         align={alignment.align} 
@@ -304,7 +316,7 @@ class MathGrid extends React.Component {
         width={WIDTH} 
         height={HEIGHT} 
         
-        text={strip(lineInfo.value.toString())} 
+        text={str} 
         fontSize={this.labelFontSize} 
         fontFamily={'Calibri'} 
         fill={axisOffscreen ? '	#696969':'black'} 
@@ -325,18 +337,29 @@ class MathGrid extends React.Component {
     let yAxis = gridInfo.xLines.filter((line) => line.lineNum === 0)[0] // if main X line is not on the screen, this is undefined
     let xAxis = gridInfo.yLines.filter((line) => line.lineNum === 0)[0] // as above
     
-    const OFFSET = 2;
+    const OFFSET = 0;
     let xNumbersYPos = xAxis !== undefined ? clamp(xAxis.pos, OFFSET, height-this.labelFontSize*1.5-OFFSET) : (gridSettings.center[1] > 0 ? OFFSET: height-this.labelFontSize*1.5-OFFSET); // the 2nd tertiary operator checks if x axis is below or above screen. If it is below, x nums should stick to bottom of screen. Otherwise, to top. Fix magic numbers
     let yNumbersXPos = yAxis !== undefined ? clamp(yAxis.pos, 20, width-OFFSET) : (gridSettings.center[0] > 0 ? 20: width-OFFSET); // the 2nd tertiary operator checks if x axis is below or above screen. If it is below, x nums should stick to bottom of screen. Otherwise, to top. Fix magic numbers
     
     // make a lists gridlines
     let xGridLines = gridInfo.xLines.map((item) => this.getGridLineJSX(item, "x", width, height, xNumbersYPos))
     let yGridLines = gridInfo.yLines.map((item) => this.getGridLineJSX(item, "y", width, height, yNumbersXPos))
-    let xLabels = gridInfo.xLines.map((item) => this.getLineLabelJSX(item, "x", xNumbersYPos, xAxis == undefined))
+    let xLabels = gridInfo.xLines.map((item) => this.getLineLabelJSX({...item, pos: item.pos - (item.value < 0 ? 2 : 0)}, "x", xNumbersYPos, xAxis == undefined)) // negative values are offset slightly left so the label is centered on the number only, ignoring - sign
     let yLabels = gridInfo.yLines.map((item) => this.getLineLabelJSX({...item, value: -item.value}, "y", yNumbersXPos, yAxis == undefined)) // values of y lines are in reverse of what they should be, so we reverse them again here.
 
 
-    // the only problem with labels now is the offsets when axes are not on screen. Then numbers can be cut off screen
+    // the only problem with labels now is the y axis left offset when axis are not on screen. Then numbers can be cut off screen.
+    // also the font
+
+    // line
+    let points = getLinePoints(width,height,
+      gridInfo.unitScreenBounds.left,
+      gridInfo.unitScreenBounds.right,
+      gridInfo.unitScreenBounds.bottom,
+      gridInfo.unitScreenBounds.top, 
+      testFunctionEvaluator)
+    let svg = pointsToSVG(points);
+
     return (
       <div ref={this.containerDiv} className='w-100 h-100' style={{position:'relative'}}>
         <Stage 
@@ -346,17 +369,18 @@ class MathGrid extends React.Component {
           onWheel = {this.handleWheel}
           onMouseMove={this.handleMouseMove}
         >
-          <Layer >
+          <Layer listening={false}>
             {xGridLines}
             {yGridLines}
             {xLabels}
             {yLabels}
-            {/* <Line points={getLinePoints(width,height,
-              gridInfo.unitScreenBounds.left,
-              gridInfo.unitScreenBounds.right,
-              gridInfo.unitScreenBounds.bottom,
-              gridInfo.unitScreenBounds.top, 
-              testFunctionEvaluator)} strokeWidth={1} stroke={"red"}/> */}
+            {/* <Path x={0} y={0} stroke={"brown"} strokeWidth={3} data={svg}/> */}
+            {/* <Line points={points} strokeWidth={1} stroke={"brown"} perfectDrawEnabled={false} listening={false} shadowForStrokeEnabled={false} strokeHitEnabled={false}/> */}
+            
+          </Layer>
+          <Layer>
+            {/* <Line points={points} strokeWidth={1} stroke={"brown"} perfectDrawEnabled={false} listening={false} shadowForStrokeEnabled={false} strokeHitEnabled={false}/> */}
+            
           </Layer>
         </Stage>
       </div>
@@ -369,15 +393,23 @@ export default MathGrid;
 
 
 
-// TO DO:
-// clean up formatting of X unit labels
-// add in y text, add in thicker y lines every 5 etc. --> last
-// change grid colors to more grey, and make it look pretty
+// TO DO - final grid touchups. After this grid fully done. !!!DO THESE LAST, IT IS INEFFECTIVE TO PERFECT IT NOW!!! Almost perfect is what you should aim for.
+// fix scrolling difference with mouse (100) and trackpad. Will have to detect device or make algo to make value look reasonable. 
+// make scale speed not linear, check desmos for ideas (faster as you zoom out, slower as you zoom in)
+
+// add in exponential labels when numbers get very big or very small, and expand the zoom range.
+
+// fix y label left justify
+// potentially change label font
+
+// potentially make all things to the same number of decimal places
+
+// TO DO - more significant:
 // fix problems with the line drawing function in utilities
 // improve performance!! You can optimise a lot of things, like gridJump
 // improve commenting and magic numbers and variable names, especially for gridJump. Remove spaghetti code.
-// fix scrolling with mouse, which is jumpy and zooms in fully on up zoom
-// make scale speed not linear, check desmos for ideas (faster as you zoom out, slower as you zoom in)
+
+
 
 // make grid labels not say .00001 --> DONE
 // make scaling on mouse work at small distances --> DONE

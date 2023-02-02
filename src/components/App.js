@@ -3,12 +3,13 @@ import React from 'react';
 import 'tachyons';
 import MathBar from './MathBar/MathBar.js';
 import MathGrid from './MathGrid/MathGrid.js';
+import FPSStats from "react-fps-stats";
 
 class App extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-
+      equations: ""
     }
   }
   
@@ -32,6 +33,7 @@ class App extends React.Component {
                 <MathGrid/>
               </div>
           </div>
+          <FPSStats/>
       </div>
     )
   }
