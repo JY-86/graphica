@@ -183,8 +183,12 @@ function getLinePoints_v2(pixelWidth, pixelHeight, xLeft, xRight, yBottom, yTop,
     // }
     let arr = getDiffGrid_Optimised(pixelWidth, pixelHeight, xLeft, yTop, xStep, yStep, functionEvaluator)
     
+    let emptyCols = [];
+    let isFunction = true;
+
     // line points by columns
     for (var i = 0; i < pixelWidth; i++) {
+        let pointsInCol = 0;
         for (var j = 1; j < pixelHeight-1; j++) { //only tests from 2nd row to n-1 row (inclusive)
             let a = arr[j-1][i]
             let b = arr[j][i]
@@ -192,14 +196,21 @@ function getLinePoints_v2(pixelWidth, pixelHeight, xLeft, xRight, yBottom, yTop,
             if (Math.sign(a) !== Math.sign(b)) {
                 //linePointsCol.push(i, j - Math.abs(b)/(Math.abs(a)+Math.abs(b)))
                 linePointsCol.push([j.toString() + i.toString(), i, j - Math.abs(b)/(Math.abs(a)+Math.abs(b))]) //pixel key, x, y
+                pointsInCol++;
             }
         }
+        if (pointsInCol === 0) emptyCols.push(i);
+        else if (pointsInCol >= 2) isFunction = false;
     }
     //linePointsCol = linePointsCol.map(x => [x[1],x[2]]).flat()
     // line points by rows. These are only used to compare and so do not need to be in sorted order, so we put them in a hash set for quick lookup times
     let linePointsRow = new Set();
 
+    let emptyRows = [];
+    let isOneToMany = true;
+
     for (var i = 1; i < pixelHeight-1; i++) {
+        let pointsInRow = 0;
         for (var j = 1; j < pixelWidth-1; j++) { //skip the first row and last row, because we dont want any points on the edges to be excluded later
             let a = arr[i][j-1]
             let b = arr[i][j]
@@ -207,8 +218,11 @@ function getLinePoints_v2(pixelWidth, pixelHeight, xLeft, xRight, yBottom, yTop,
             if (Math.sign(a) !== Math.sign(b)) {
                 linePointsRow.add(i.toString() + (j-1).toString()); //convert it to a string because we need a value type, otherwise we would compare different obj references)
                 linePointsRow.add(i.toString() + (j).toString());
+                pointsInRow++;
             }
         }
+        if (pointsInRow === 0) emptyRows.push(i);
+        else if (pointsInRow >= 2) isOneToMany = false;
     }
 
     // filter for only intersection of two line points collections
@@ -302,7 +316,7 @@ function testFunctionEvaluator(x,y) {
         RHS = -1/x//Math.pow(x,2) * (1-Math.pow(x,2))//(x-2)*(x-4)*(x+1)//Math.atan(x)//Math.pow(x,2)//1/x//Math.min(Math.atan(x), 1)//Math.atan(x)//x/10//Math.log(x)//2*x* Math.pow(Math.E, -Math.pow(x,2))// Math.pow(x,3)-3//Math.sin(x)//(x-2)*(x-4)*(x+1)//0.1*(y-2)*(y-5)*(y+6)
     }
     catch {
-       LHS = NaN
+       LHS = NaN // !!!!!!!!!!!!!!!!!!!!!! Nan might be 64 bit, in which case it would screw up the types array and force it to expand, which would greatly reduce performance gains. fix this.
        RHS = NaN 
     }  
     return LHS-RHS
