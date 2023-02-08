@@ -2,7 +2,7 @@ import React from 'react';
 import 'tachyons';
 import { Stage, Layer, Rect, Circle, Line, Text, Group, Path } from 'react-konva';
 import Konva from 'konva'
-import {clamp, Vector, getLinePoints, testFunctionEvaluator, strip, pointsToSVG} from '../../algorithms/utilities'
+import {clamp, Vector, getLinePoints, getLinePoints_v2, testFunctionEvaluator, strip, pointsToSVG} from '../../algorithms/utilities'
 import 'big-js';
 
 class MathGrid extends React.Component {
@@ -233,7 +233,7 @@ class MathGrid extends React.Component {
     if (lineInfo.lineNum == 0) strokeWidth = 2;
 
     // unique identifier
-    let key = lineInfo.pos+axis.charCodeAt(0)
+    let key = lineInfo.lineNum//lineInfo.pos+axis.charCodeAt(0)
     
   
     // color
@@ -351,14 +351,14 @@ class MathGrid extends React.Component {
     // the only problem with labels now is the y axis left offset when axis are not on screen. Then numbers can be cut off screen.
     // also the font
 
-    // line
-    let points = getLinePoints(width,height,
+    // // line
+    let points = getLinePoints_v2(width,height,
       gridInfo.unitScreenBounds.left,
       gridInfo.unitScreenBounds.right,
       gridInfo.unitScreenBounds.bottom,
       gridInfo.unitScreenBounds.top, 
-      testFunctionEvaluator)
-    let svg = pointsToSVG(points);
+      testFunctionEvaluator, 1)
+    // let svg = pointsToSVG(points);
 
     return (
       <div ref={this.containerDiv} className='w-100 h-100' style={{position:'relative'}}>
@@ -379,7 +379,7 @@ class MathGrid extends React.Component {
             
           </Layer>
           <Layer>
-            {/* <Line points={points} strokeWidth={1} stroke={"brown"} perfectDrawEnabled={false} listening={false} shadowForStrokeEnabled={false} strokeHitEnabled={false}/> */}
+            <Line points={points} strokeWidth={3} stroke={"brown"} perfectDrawEnabled={false} listening={false} shadowForStrokeEnabled={false} strokeHitEnabled={false}/>
             
           </Layer>
         </Stage>
