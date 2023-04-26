@@ -215,6 +215,8 @@ function getLinePoints_v3(pixelWidth, pixelHeight, xLeft, xRight, yBottom, yTop,
 
     let arr = getDiffGrid_Optimised(pixelWidth, pixelHeight, xLeft, yTop, xStep, yStep, functionEvaluator)
 
+    console.table(arr.map(x => x.map(y => y.toPrecision(4).padEnd(4))));
+
     // utility function status
     const pixWidthMultiplier = Math.pow(10, Math.ceil(Math.log10(pixelWidth)))
     let getUniquePosKey = (x,y) => x*pixWidthMultiplier + y 
