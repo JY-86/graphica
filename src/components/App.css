@@ -1,0 +1,35 @@
+video:focus { 
+    outline:none; 
+}
+
+video {
+    clip-path: inset(1px 1px);
+}
+
+.opacityFade {
+    opacity: 0;
+    transition: 0.3s;
+}
+
+
+.opacityZero {
+    opacity: 0;
+}
+
+.opacityGrow {
+    opacity: 1 !important;
+    transition: 0.3s;
+}
+
+p, ul {
+    font-size: 15px;
+}
+
+.noDrag {
+    -webkit-app-region: no-drag;
+}
+
+#header {
+    -webkit-app-region: drag;
+}
+

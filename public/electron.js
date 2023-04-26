@@ -3,18 +3,27 @@ const { app, BrowserWindow, protocol } = require("electron");
 const path = require("path");
 const url = require("url");
 
+
 // Create the native browser window.
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
-    minWidth:400,
-    minHeight:400,
+    minWidth: 700,
+    minHeight: 500,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#2f3241',       // unfortunately referencing the 'constants' file inside source foulder could cause build issue, so whenever you change this, you must also change constants.js
+      symbolColor: '#74b1be', // see above
+      height: 34
+    },
     // Set the path of an additional "preload" script that can be used to
     // communicate between node-land and browser-land.
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
-    },
+      nodeIntegration: true,
+      nodeIntegrationInWorker: true,
+    }
   });
 
   // In production, set the initial browser path to the local bundle generated

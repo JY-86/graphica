@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="500" height="500" version="1.1" viewBox="0 0 132.29 132.29" xmlns="http://www.w3.org/2000/svg">
+<path d="m17.198 10.322h81.491l23.281 24.117v80.655c0 3.8097-3.067 6.8768-6.8768 6.8768h-97.895c-3.8097 0-6.8768-3.067-6.8768-6.8768v-97.895c0-3.8097 3.067-6.8768 6.8768-6.8768z" fill="none" stop-color="#000000" stroke="#000" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="3.9688"/>
+<rect x="32.558" y="10.322" width="57.305" height="39.334" rx="0" ry="0" fill="#fff" stop-color="#000000" stroke="#000" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="3.9688"/>
+<rect x="33.561" y="72.516" width="70.805" height="49.55" rx="0" ry="0" fill="none" stop-color="#000000" stroke="#000" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="3.9688"/>
+<rect x="46.44" y="85.94" width="46.956" height="5.16" rx="2.58" ry="2.58" stop-color="#000000"/>
+<rect x="46.44" y="100.76" width="46.956" height="5.16" rx="2.58" ry="2.58" stop-color="#000000"/>
+<path d="m100.66 50.054c-1.4293 0-2.5797 1.1509-2.5797 2.5802v30.425l-16.634-0.01964c-0.24245-4.97e-4 -0.3944 0.26204-0.27337 0.47232l23.961 41.656c0.12094 0.21019 0.42385 0.21047 0.54519 5.2e-4l24.06-41.598c0.12128-0.2098-0.0297-0.47237-0.27182-0.47284l-16.59-0.01964v-30.443c0-1.4293-1.1509-2.5802-2.5802-2.5802z" stop-color="#000000" stroke="#fff" stroke-linecap="round" stroke-width="1.3229"/>
+</svg>

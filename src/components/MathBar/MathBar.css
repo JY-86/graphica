@@ -1,0 +1,27 @@
+.expand {
+    width:30px;
+    height:30px; 
+    transition: 0.3s;
+    transition-property: transform;
+}
+
+.expand:hover {
+    transform: scale(1.1);
+}
+
+.eqnButton {
+    padding: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none;
+}
+
+.eqnButtonEnabled:hover {
+    background-color: rgba(94, 94, 94, 0.158);
+    border-radius: 5px;
+}
+
+.disabled {
+    fill: rgb(153, 153, 153);
+}

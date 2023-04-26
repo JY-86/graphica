@@ -1,0 +1,6 @@
+These help videos are samples only. The final videos will be produced once the app is finished.
+
+The help videos do not include descriptions or in-video labels because they will be placed as looping videos next to explanatory blocks of text.
+
+
+I cannot yet implement the other help video samples because I have not programmed the necessary functionality. These include undo-redo help, tab switching help, and saving help.

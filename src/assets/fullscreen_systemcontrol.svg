@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg version="1.1" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+<rect x="120.82" y="35.514" width="158.37" height="128.97" rx=".82382" ry=".82382" fill="none" stop-color="#000000" stroke="#000" stroke-linecap="square" stroke-linejoin="bevel" stroke-width="6.5"/>
+<rect transform="scale(-1,1)" x="-164.4" y="43.905" width="35" height="6.6" rx=".82382" ry=".82382" stop-color="#000000" stroke-width="0"/>
+<rect transform="matrix(0,-1,-1,0,0,0)" x="-78.905" y="-135.99" width="35" height="6.5999" rx=".82382" ry=".82382" stop-color="#000000" stroke-width="0"/>
+<rect transform="scale(-1)" x="-164.4" y="-155.85" width="35" height="6.6" rx=".82382" ry=".82382" stop-color="#000000" stroke-width="0"/>
+<rect transform="rotate(90)" x="120.85" y="-135.99" width="35" height="6.5999" rx=".82382" ry=".82382" stop-color="#000000" stroke-width="0"/>
+<rect transform="scale(1,-1)" x="235.73" y="-155.85" width="35" height="6.6" rx=".82382" ry=".82382" stop-color="#000000" stroke-width="0"/>
+<rect transform="matrix(0,1,1,0,0,0)" x="120.85" y="264.14" width="35" height="6.5999" rx=".82382" ry=".82382" stop-color="#000000" stroke-width="0"/>
+<rect x="235.73" y="43.905" width="35" height="6.6" rx=".82382" ry=".82382" stop-color="#000000" stroke-width="0"/>
+<rect transform="rotate(-90)" x="-78.905" y="264.14" width="35" height="6.5999" rx=".82382" ry=".82382" stop-color="#000000" stroke-width="0"/>
+</svg>

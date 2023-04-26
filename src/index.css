@@ -28,3 +28,9 @@ body {
   font-family: 'Courier New', Courier, monospace;
   font-weight: 500; */
 }
+
+
+/* DISABLE THIS IF YOU WANT ERRORS */
+body > iframe {
+  display: none;
+}
