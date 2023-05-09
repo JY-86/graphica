@@ -2,7 +2,7 @@ import React from 'react';
 import 'tachyons';
 import { Stage, Layer, Rect, Circle, Line, Text, Group, Path } from 'react-konva';
 import Konva from 'konva'
-import {clamp, Vector, getLinePoints, getLinePoints_v2, testFunctionEvaluator, strip, pointsToSVG} from '../../algorithms/utilities'
+import {clamp, Vector, getLinePoints, getLinePoints_v2, getLinePoints_v3, testFunctionEvaluator, strip, pointsToSVG} from '../../algorithms/utilities'
 import 'big-js';
 import { withResizeDetector } from 'react-resize-detector';
 import {ReactComponent as ZoomIn} from '../../assets/zoom_in.svg';
@@ -460,12 +460,12 @@ class MathGrid extends React.Component {
 	for (let i = this.props.lineEquations.length-1; i >= 0; i--) { // draw lines in reverse order so earliest line on top
 		let equationFunc = this.props.lineEquations[i][0];
 
-		let line = getLinePoints_v2(width,height,
+		let line = getLinePoints_v3(width,height,
 			gridInfo.unitScreenBounds.left,
 			gridInfo.unitScreenBounds.right,
 			gridInfo.unitScreenBounds.bottom,
 			gridInfo.unitScreenBounds.top, 
-			equationFunc, 1)
+			equationFunc)
 
 		let lineJSX = line.map(linePoints => {
 			//console.log(linePoints)

@@ -1,4 +1,5 @@
 import evaluatex from 'evaluatex/dist/evaluatex';
+import { Queue } from '@datastructures-js/queue';
 
 const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
 
@@ -204,7 +205,7 @@ function init2DNumberMatrix(width, height, initNum=0) {
     return arr;
 }
 
-function getLinePoints_v3(pixelWidth, pixelHeight, xLeft, xRight, yBottom, yTop, functionEvaluator) {   
+function getLinePoints_v3(pixelWidth, pixelHeight, xLeft, xRight, yBottom, yTop, functionEvaluator, log=false) {   
     //timer
     let f = Math.random().toString()
     console.time(f)
@@ -215,15 +216,16 @@ function getLinePoints_v3(pixelWidth, pixelHeight, xLeft, xRight, yBottom, yTop,
 
     let arr = getDiffGrid_Optimised(pixelWidth, pixelHeight, xLeft, yTop, xStep, yStep, functionEvaluator)
 
-    console.table(arr.map(x => x.map(y => y.toPrecision(4).padEnd(4))));
+    // console.table(arr.map(x => x.map(y => y.toPrecision(4).padEnd(4))));
 
     // utility function status
     const pixWidthMultiplier = Math.pow(10, Math.ceil(Math.log10(pixelWidth)))
     let getUniquePosKey = (x,y) => x*pixWidthMultiplier + y 
 
-
+    
     // column line points array.
-    let linePointsCol = init2DNumberMatrix(pixelWidth, pixelHeight); // maybe need to init with 0?
+    let sentinel = 2; // sentinel must be more than 1.
+    let linePointsCol = init2DNumberMatrix(pixelWidth, pixelHeight, -sentinel); // maybe need to init with 0?
     let emptyCols = [];
     let isFunction = true;
 
@@ -232,19 +234,19 @@ function getLinePoints_v3(pixelWidth, pixelHeight, xLeft, xRight, yBottom, yTop,
         for (var j = 1; j < pixelHeight; j++) { // tests from 1st row to n row (inclusive)
             let a = arr[j-1][i]
             let b = arr[j][i]
-            if (a===DIFF_NAN || b===DIFF_NAN) continue;
-            if (Math.sign(a) !== Math.sign(b)) {
+            // console.log(a,b)
+            if (Number.isNaN(a) || Number.isNaN(b) || !Number.isFinite(a) || !Number.isFinite(b)) continue;
+            if (Math.sign(a) !== Math.sign(b) && Math.sign(a) !== 0) { // if a value is exactly 0, it should only be read one time - when b=0
                 let absA = Math.abs(a);
                 let absB = Math.abs(b);
-                let yColAvg = j - absB / (absA+absB);
-                let sentinel = 2; // sentinel must be more than 1.
+                let yColAvg = absB / (absA+absB);
                 if (absA <= absB) {
-                    linePointsCol[j-1][i] = yColAvg; 
+                    linePointsCol[j-1][i] = 1-yColAvg;  // later will add yColAvg to j to get y pos
                     linePointsCol[j][i] = sentinel;
                 } // this if statement only pushes to the pixel closest to the line.
                 else {
                     linePointsCol[j-1][i] = sentinel; 
-                    linePointsCol[j][i] = yColAvg;
+                    linePointsCol[j][i] = -yColAvg; //later will subtract yColAvg from j to get y pos.
                 }
                 pointsInCol++;
             }
@@ -253,7 +255,146 @@ function getLinePoints_v3(pixelWidth, pixelHeight, xLeft, xRight, yBottom, yTop,
         else if (pointsInCol >= 2) isFunction = false;
     }
 
-    console.table(linePointsCol);
+    // console.table(linePointsCol.map(x => x.map(y => y.toPrecision(2).padEnd(2))));
+
+    // row matrix
+    let linePointsRow = init2DNumberMatrix(pixelWidth, pixelHeight, -sentinel); // maybe need to init with 0?
+    let emptyRows = [];
+    let isOneToMany = true;
+
+    for (var i = 0; i < pixelHeight; i++) {
+        let pointsInRow = 0;
+        for (var j = 1; j < pixelWidth; j++) { // tests from 1st row to n row (inclusive)
+            let a = arr[i][j-1]
+            let b = arr[i][j]
+            if (Number.isNaN(a) || Number.isNaN(b) || !Number.isFinite(a) || !Number.isFinite(b)) continue; 
+            // else if (Number.isNaN(b)) linePointsRow[i][j-1] = 0;
+            // else if (Number.isNaN(a)) linePointsRow[i][j] = 0;
+            if (Math.sign(a) !== Math.sign(b) && Math.sign(a) !== 0) { // if a value is exactly 0, it should only be read one time - when b=0
+                let absA = Math.abs(a);
+                let absB = Math.abs(b);
+                let xColAvg = absB / (absA+absB);
+                linePointsRow[i][j-1] = 0;//1-xColAvg;  // after testing keeping it at 0 instead of displacing x with a float looks smoother
+                linePointsRow[i][j] = 0;//-xColAvg;
+                pointsInRow++;
+            }
+        }
+        if (pointsInRow === 0) emptyRows.push(i);
+        else if (pointsInRow >= 2) isOneToMany = false;
+    }
+
+    
+
+
+    // union+intersection matrix
+    let unionMatrix = init2DNumberMatrix(pixelWidth, pixelHeight, 0);
+    let pixelatedPoints = []; // improve to high performance later
+
+    for (var i = 0; i < pixelHeight; i++) {
+        for (var j = 0; j < pixelWidth; j++) { // tests from 1st row to n row (inclusive)
+            let colVal = linePointsCol[i][j];
+            let rowVal = linePointsRow[i][j];
+            
+            if (colVal == sentinel) unionMatrix[i][j] = 1;
+            else unionMatrix[i][j] = (rowVal !== -sentinel) + (colVal !== -sentinel) // 0 if no point there, 1 if one point there, 2 if both
+
+            // make all edges a 2
+            if (unionMatrix[i][j] && (i==0 || i==pixelHeight-1 || j==0 || j==pixelWidth-1)) unionMatrix[i][j] = 2;
+
+            if (unionMatrix[i][j] === 2) pixelatedPoints.push([j,i])
+        }
+    }
+
+    // find empty rows and empty columns from union matrix - updated method of finding empty rows
+    // emptyRows=[]
+    // emptyCols=[]
+    // actually - calculate them directly from NaN values in arr.
+
+    for (var i = 0; i < pixelHeight; i++) {
+        for (var j = 0; j < pixelWidth; j++) { // tests from 1st row to n row (inclusive)
+            let colVal = linePointsCol[i][j];
+            let rowVal = linePointsRow[i][j];
+            
+            if (colVal == sentinel) unionMatrix[i][j] = 1;
+            else unionMatrix[i][j] = (rowVal !== -sentinel) + (colVal !== -sentinel) // 0 if no point there, 1 if one point there, 2 if both
+
+            // make all edges a 2
+            if (unionMatrix[i][j] && (i==0 || i==pixelHeight-1 || j==0 || j==pixelWidth-1)) unionMatrix[i][j] = 2;
+
+            if (unionMatrix[i][j] === 2) pixelatedPoints.push([j,i])
+        }
+    }
+
+    
+    // console.table(unionMatrix);
+    // console.log(pixelatedPoints, emptyCols)
+    // console.log(pixelatedPoints.join(" | "))
+    // order points and clean up based on the type of function it is
+    let functionCase = isFunction ? "col" : (isOneToMany ? "row" : "rel")
+
+
+    
+    
+    // map pixelated points to the exact float positions
+    // console.log(pixelatedPoints.join("|"))
+    for (let i = 0; i < pixelatedPoints.length; i++) {
+        let x = pixelatedPoints[i][0];
+        let y = pixelatedPoints[i][1];
+        let additionX = linePointsRow[y][x] * (Math.abs(linePointsRow[y][x]) !== sentinel)
+        let additionY = linePointsCol[y][x] * (Math.abs(linePointsCol[y][x]) !== sentinel)
+        pixelatedPoints[i] = [x + additionX, y + additionY]
+    }
+    // console.log(pixelatedPoints.join("|"))
+
+    let splitLinePoints = []
+    if (functionCase === "col") {
+        let breaks = emptyCols;
+        pixelatedPoints = addBreaksToPoints(pixelatedPoints, breaks);
+
+        pixelatedPoints.sort((p1,p2) => p1[0] - p2[0])
+
+        
+        // split based on empty columns
+        splitLinePoints = filterBreaksFromPoints(pixelatedPoints)
+
+    }
+    else if (functionCase === "row") {
+        let breaks = emptyRows;
+        pixelatedPoints = addBreaksToPoints(pixelatedPoints, breaks);
+
+        pixelatedPoints.sort((p1,p2) => p1[1] - p2[1])
+
+        
+        // split based on empty columns
+        splitLinePoints = filterBreaksFromPoints(pixelatedPoints)
+        
+    }
+    else {
+        let lines = [];
+        for (var i = 0; i < pixelHeight; i++) {
+            for (var j = 0; j < pixelWidth; j++) { // tests from 1st row to n row (inclusive)
+                // if (union[i][j] === 2) lines.push(BFS_Modified(unionMatrix, i, j))
+            }
+        }
+        // hardest case - a relation like x^2+y^2 =1
+    }
+    
+    if (log) {
+        console.log(emptyCols)
+        console.table(arr);
+        console.table(linePointsRow.map(x => x.map(y => y.toPrecision(2).padEnd(2))));
+        console.table(linePointsCol.map(x => x.map(y => y.toPrecision(2).padEnd(2))));
+        console.table(unionMatrix)
+        console.log(pixelatedPoints)
+        console.log(splitLinePoints)
+    }
+
+    // flatten the list to match Konva line drawing format
+    splitLinePoints = splitLinePoints.map(x => x.flat())
+    return splitLinePoints
+    // let linePointsFlat = linePoints.flat()
+
+
     // line points by columns
     // let linePointsCol = []
     // let emptyCols = [];
@@ -359,7 +500,32 @@ function getLinePoints_v3(pixelWidth, pixelHeight, xLeft, xRight, yBottom, yTop,
 }
 
 
+function BFS_Modified(unionMatrix, x, y) {
+    const VISITED = -3;
 
+    let line = [[x,y]];
+    unionMatrix[x,y] = VISITED;
+
+    let Q = new Queue([[x,y]]);
+    while (!Q.isEmpty()) {
+        let pos = Q.dequeue();
+        if (unionMatrix[pos[0], pos[1]] == 2) { // 2 indicates that it is a key point 
+            // reset the search from this point
+            Q.clear();
+            Q.enqueue(pos)
+            unionMatrix[pos[0],pos[1]] = VISITED;
+        }
+        else {
+            let {x,y} = pos;
+            let neighbours = [[x+1,y], [x-1,y], [x,y+1], [x,y-1]];
+            neighbours.forEach(neighbour => {
+                let {nx, ny} = neighbour;
+                // if (nx < unionMatrix.length && ny < unionMatrix.unionMatrix[nx,ny] >=1)
+            })
+        }
+    }
+    
+}
 
 
 
@@ -374,16 +540,21 @@ function addBreaksToPoints(points, breaks) {
 
 function filterBreaksFromPoints(sortedPoints) {
     let splitArr = [];
-
-    let start = 0;
-    for (var i = 0; i < sortedPoints.length; i++) {
-        if (sortedPoints[i].length === 3) { // all breaks are an array of length 3, not 2 
-            if (start !== i) splitArr.push(sortedPoints.slice(start, i));
-            start = i+1;
+    console.log(sortedPoints)
+    let intervals = [0];
+    
+    for (let i = 1; i < sortedPoints.length-1; i++) {
+        if (sortedPoints[i].length === 3) {
+            if (sortedPoints[i-1].length == 2) intervals.push(i-1); // all breaks are an array of length 3, not 2
+            if (sortedPoints[i+1].length == 2) intervals.push(i+1);
         }
     }
-    if (start !== sortedPoints.length) splitArr.push(sortedPoints.slice(start, sortedPoints.length));
-    
+    intervals.push(sortedPoints.length-1);
+    // console.log(intervals)
+    for (let i = 0; i < intervals.length; i += 2) {
+        splitArr.push(sortedPoints.slice(intervals[i], intervals[i+1]+1));
+    }
+    // console.log(splitArr)
     return splitArr;
 }
 
@@ -442,8 +613,8 @@ function findEdges(pixelWidth, pixelHeight, diffArr) {
 function testFunctionEvaluator(x,y) {
     let LHS, RHS;
     try {
-        LHS = y//y//y//x
-        RHS = Math.pow(x,2)//Math.sin(x)//x//Math.sin(y)*y//Math.pow(x,4)//1/x//Math.atan(x)//Math.pow(x,4)//-1/x//Math.pow(x,2) * (1-Math.pow(x,2))//(x-2)*(x-4)*(x+1)//Math.atan(x)//Math.pow(x,2)//1/x//Math.min(Math.atan(x), 1)//Math.atan(x)//x/10//Math.log(x)//2*x* Math.pow(Math.E, -Math.pow(x,2))// Math.pow(x,3)-3//Math.sin(x)//(x-2)*(x-4)*(x+1)//0.1*(y-2)*(y-5)*(y+6)
+        LHS = y//Math.pow(y,2) + Math.pow(x,2) //y//y//x
+        RHS = 1/x//Math.pow(x,2)//Math.sin(x)//x//Math.sin(y)*y//Math.pow(x,4)//1/x//Math.atan(x)//Math.pow(x,4)//-1/x//Math.pow(x,2) * (1-Math.pow(x,2))//(x-2)*(x-4)*(x+1)//Math.atan(x)//Math.pow(x,2)//1/x//Math.min(Math.atan(x), 1)//Math.atan(x)//x/10//Math.log(x)//2*x* Math.pow(Math.E, -Math.pow(x,2))// Math.pow(x,3)-3//Math.sin(x)//(x-2)*(x-4)*(x+1)//0.1*(y-2)*(y-5)*(y+6)
     }
     catch {
        LHS = DIFF_NAN // !!!!!!!!!!!!!!!!!!!!!! Nan might be 64 bit, in which case it would screw up the types array and force it to expand, which would greatly reduce performance gains. fix this.
@@ -452,7 +623,7 @@ function testFunctionEvaluator(x,y) {
     return LHS-RHS
 }
 
-getLinePoints_v3(100, 100, -10, 10, -10, 10, testFunctionEvaluator)
+getLinePoints_v3(19, 19, -2.5, 2.5, -2.5, 2.5, testFunctionEvaluator, true)
 
 function pointsToSVG(points) {
     let d = `M ${points[0]} ${points[1]}`
@@ -524,14 +695,14 @@ function getEvaluatorFunction(latex) {
 
 
 let e = getEvaluatorFunction("y=x+l")
-console.log(evaluatex("\\sqrt{-x+5}", {}, {latex:true})({"x":100})) // it returns NaN
+// console.log(evaluatex("\\sqrt{-x+5}", {}, {latex:true})({"x":100})) // it returns NaN
 
 // console.log(evaluatex("e", {}, {latex: true})())
 // console.log("RUNNING PERFORMANCE TESTS")
 // getDiffGrid(1000, 1000, -15.2, 40.65, 0.03, 0.03, testFunctionEvaluator)
 // getDiffGrid_Optimised(1000, 1000, -15.2, 40.65, 0.03, 0.03, testFunctionEvaluator)
 
-export {clamp, Vector, getLinePoints_v2, testFunctionEvaluator, strip, pointsToSVG, getEvaluatorFunction};
+export {clamp, Vector, getLinePoints_v2, getLinePoints_v3, testFunctionEvaluator, strip, pointsToSVG, getEvaluatorFunction};
 
 
 
